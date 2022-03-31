@@ -1,4 +1,59 @@
+import os
+import imageio
 import numpy as np
+
+imageio.plugins.freeimage.download()
+
+
+## ref: https://stackoverflow.com/questions/50748084/convert-exr-to-jpeg-using-imageio-and-python
+# def convert_exr_to_jpg(exr_file, jpg_file):
+#     if not os.path.isfile(exr_file):
+#         return False
+
+#     filename, extension = os.path.splitext(exr_file)
+#     if not extension.lower().endswith('.exr'):
+#         return False
+
+#     # imageio.plugins.freeimage.download() #DOWNLOAD IT
+#     image = imageio.imread(exr_file, format='EXR-FI')
+
+#     # remove alpha channel for jpg conversion
+#     image = image[:,:,:3]
+
+#     # normalize the image
+#     data = image.astype(image.dtype) / image.max() # normalize the data to 0 - 1
+#     data = 255 * data # Now scale by 255
+#     rgb_image = data.astype('uint8')
+#     # rgb_image = imageio.core.image_as_uint(rgb_image, bitdepth=8)
+
+#     imageio.imwrite(jpg_file, rgb_image, format='jpeg')
+#     return True
+
+
+def convert_exr_to_jpg(exr_file, jpg_file):
+    if not os.path.isfile(exr_file):
+        return False
+
+    _, extension = os.path.splitext(exr_file)
+    if not extension.lower().endswith('.exr'):
+        return False
+
+    # imageio.plugins.freeimage.download() #DOWNLOAD IT
+    image = imageio.imread(exr_file)
+    print(image.dtype)
+
+    # remove alpha channel for jpg conversion
+    image = image[:,:,:3]
+
+
+    data = 65535 * image
+    data[data>65535]=65535
+    rgb_image = data.astype('uint16')
+    print(rgb_image.dtype)
+    #rgb_image = imageio.core.image_as_uint(rgb_image, bitdepth=16)
+
+    imageio.imwrite(jpg_file, rgb_image)
+    return True
 
 def standardize_bbox(pcl, points_per_object):
     pt_indices = np.random.choice(pcl.shape[0], points_per_object, replace=False)
@@ -14,7 +69,7 @@ def standardize_bbox(pcl, points_per_object):
 
 xml_head = \
 """
-<scene version="2.2.1">
+<scene version="0.6.0">
     <integrator type="path">
         <integer name="maxDepth" value="-1"/>
     </integrator>
@@ -25,15 +80,13 @@ xml_head = \
             <lookat origin="3,3,3" target="0,0,0" up="0,0,1"/>
         </transform>
         <float name="fov" value="25"/>
-        
-        <sampler type="ldsampler">
+        <sampler type="independent">
             <integer name="sampleCount" value="256"/>
         </sampler>
         <film type="hdrfilm">
-            <integer name="width" value="1600"/>
-            <integer name="height" value="1200"/>
+            <integer name="width" value="1920"/>
+            <integer name="height" value="1080"/>
             <rfilter type="gaussian"/>
-            <boolean name="banner" value="false"/>
         </film>
     </sensor>
     
@@ -43,8 +96,8 @@ xml_head = \
         <float name="intIOR" value="1.46"/>
         <rgb name="diffuseReflectance" value="1,1,1"/> <!-- default 0.5 -->
     </bsdf>
-    
 """
+
 
 xml_ball_segment = \
 """
@@ -106,3 +159,8 @@ with open('mitsuba_scene.xml', 'w') as f:
     f.write(xml_content)
 
 
+# render xml to exr
+os.system(f"mitsuba mitsuba_scene.xml")
+
+# change exr to jpeg
+convert_exr_to_jpg('mitsuba_scene.exr', 'mitsuba_scene.png')
