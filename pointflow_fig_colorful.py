@@ -26,7 +26,7 @@ imageio.plugins.freeimage.download()
 #     rgb_image = data.astype('uint8')
 #     # rgb_image = imageio.core.image_as_uint(rgb_image, bitdepth=8)
 
-#     imageio.imwrite(jpg_file, rgb_image, format='jpeg')
+#     imageio.imwrite(jpg_file, rgb_image)
 #     return True
 
 
@@ -45,15 +45,15 @@ def convert_exr_to_jpg(exr_file, jpg_file):
     # remove alpha channel for jpg conversion
     image = image[:,:,:3]
 
-
-    data = 65535 * image
-    data[data>65535]=65535
+    data = 65535 * image + 10000
+    data[data > 65535] = 65535
     rgb_image = data.astype('uint16')
     print(rgb_image.dtype)
-    #rgb_image = imageio.core.image_as_uint(rgb_image, bitdepth=16)
+    rgb_image = imageio.core.image_as_uint(rgb_image, bitdepth=16)
 
     imageio.imwrite(jpg_file, rgb_image)
     return True
+
 
 def standardize_bbox(pcl, points_per_object):
     pt_indices = np.random.choice(pcl.shape[0], points_per_object, replace=False)
@@ -66,6 +66,7 @@ def standardize_bbox(pcl, points_per_object):
     print("Center: {}, Scale: {}".format(center, scale))
     result = ((pcl - center)/scale).astype(np.float32) # [-0.5, 0.5]
     return result
+
 
 xml_head = \
 """
@@ -84,9 +85,10 @@ xml_head = \
             <integer name="sampleCount" value="256"/>
         </sampler>
         <film type="hdrfilm">
-            <integer name="width" value="1920"/>
-            <integer name="height" value="1080"/>
+            <integer name="width" value="1600"/>
+            <integer name="height" value="1200"/>
             <rfilter type="gaussian"/>
+            <boolean name="banner" value="false"/>
         </film>
     </sensor>
     
@@ -134,30 +136,32 @@ xml_tail = \
 </scene>
 """
 
-def colormap(x,y,z):
-    vec = np.array([x,y,z])
-    vec = np.clip(vec, 0.001,1.0)
-    norm = np.sqrt(np.sum(vec**2))
+def colormap(x, y, z):
+    vec = np.array([x, y, z])
+    vec = np.clip(vec, 0.001, 1.0)
+    norm = np.sqrt(np.sum(vec ** 2))
     vec /= norm
     return [vec[0], vec[1], vec[2]]
+
 xml_segments = [xml_head]
 
 pcl = np.load('chair_pcl.npy')
 pcl = standardize_bbox(pcl, 2048)
-pcl = pcl[:,[2,0,1]]
+pcl = pcl[:, [2, 0, 1]]
 pcl[:,0] *= -1
 pcl[:,2] += 0.0125
 
 for i in range(pcl.shape[0]):
-    color = colormap(pcl[i,0]+0.5,pcl[i,1]+0.5,pcl[i,2]+0.5-0.0125)
-    xml_segments.append(xml_ball_segment.format(pcl[i,0],pcl[i,1],pcl[i,2], *color))
+    delta = 0.5
+    color = colormap(pcl[i,0] + delta, pcl[i,1] + delta,pcl[i,2] + delta -0.0125)
+    xml_segments.append(
+        xml_ball_segment.format(pcl[i, 0],pcl[i, 1],pcl[i, 2], *color))
 xml_segments.append(xml_tail)
 
 xml_content = str.join('', xml_segments)
 
 with open('mitsuba_scene.xml', 'w') as f:
     f.write(xml_content)
-
 
 # render xml to exr
 os.system(f"mitsuba mitsuba_scene.xml")
