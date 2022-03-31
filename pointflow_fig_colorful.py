@@ -45,7 +45,7 @@ def convert_exr_to_jpg(exr_file, jpg_file):
     # remove alpha channel for jpg conversion
     image = image[:,:,:3]
 
-    data = 65535 * image + 10000
+    data = 65535 * image + 20000
     data[data > 65535] = 65535
     rgb_image = data.astype('uint16')
     print(rgb_image.dtype)
