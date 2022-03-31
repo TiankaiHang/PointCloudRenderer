@@ -14,7 +14,7 @@ def standardize_bbox(pcl, points_per_object):
 
 xml_head = \
 """
-<scene version="0.6.0">
+<scene version="2.2.1">
     <integrator type="path">
         <integer name="maxDepth" value="-1"/>
     </integrator>
@@ -29,7 +29,7 @@ xml_head = \
         <sampler type="ldsampler">
             <integer name="sampleCount" value="256"/>
         </sampler>
-        <film type="ldrfilm">
+        <film type="hdrfilm">
             <integer name="width" value="1600"/>
             <integer name="height" value="1200"/>
             <rfilter type="gaussian"/>
