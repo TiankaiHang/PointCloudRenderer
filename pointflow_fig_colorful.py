@@ -1,4 +1,5 @@
 import os
+import sys
 import imageio
 import numpy as np
 
@@ -145,26 +146,51 @@ def colormap(x, y, z):
 
 xml_segments = [xml_head]
 
-pcl = np.load('chair_pcl.npy')
-pcl = standardize_bbox(pcl, 2048)
-pcl = pcl[:, [2, 0, 1]]
-pcl[:,0] *= -1
-pcl[:,2] += 0.0125
 
-for i in range(pcl.shape[0]):
-    delta = 0.5
-    color = colormap(pcl[i,0] + delta, pcl[i,1] + delta,pcl[i,2] + delta -0.0125)
-    xml_segments.append(
-        xml_ball_segment.format(pcl[i, 0],pcl[i, 1],pcl[i, 2], *color))
-xml_segments.append(xml_tail)
+if __name__ == '__main__':
 
-xml_content = str.join('', xml_segments)
+    data_path = sys.argv[1]
+    out_path = sys.argv[2]
 
-with open('mitsuba_scene.xml', 'w') as f:
-    f.write(xml_content)
+    os.makedirs(out_path, exist_ok=True)
 
-# render xml to exr
-os.system(f"mitsuba mitsuba_scene.xml")
+    files = []
+    if os.path.isfile(data_path):
+        files.append(data_path)
 
-# change exr to jpeg
-convert_exr_to_jpg('mitsuba_scene.exr', 'mitsuba_scene.png')
+    elif os.path.isdir(data_path):
+        for _f in os.listdir(data_path):
+            files.append(
+                os.path.join(data_path, _f)
+            )
+    
+    for _f in files:
+        basename = os.path.basename(_f).split('.')[0]
+
+        pcl = np.load(_f)
+        pcl = standardize_bbox(pcl, 2048)
+        pcl = pcl[:, [2, 0, 1]]
+        pcl[:, 0] *= -1
+        pcl[:, 2] += 0.0125
+
+        for i in range(pcl.shape[0]):
+            delta = 0.5
+            color = colormap(pcl[i,0] + delta, pcl[i,1] + delta,pcl[i,2] + delta -0.0125)
+            xml_segments.append(
+                xml_ball_segment.format(pcl[i, 0],pcl[i, 1],pcl[i, 2], *color))
+        xml_segments.append(xml_tail)
+
+        xml_content = str.join('', xml_segments)
+
+        with open(f'{basename}.xml', 'w') as f:
+            f.write(xml_content)
+
+        # render xml to exr
+        os.system(f"mitsuba {basename}.xml")
+
+        # change exr to jpeg
+        convert_exr_to_jpg(
+            f'{basename}.exr', 
+            os.path.join(out_path, f'{basename}.png'))
+
+    os.system(f'rm -rf *.xml')
