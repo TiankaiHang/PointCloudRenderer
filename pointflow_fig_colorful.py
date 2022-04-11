@@ -41,12 +41,11 @@ def convert_exr_to_jpg(exr_file, jpg_file):
 
     # imageio.plugins.freeimage.download() #DOWNLOAD IT
     image = imageio.imread(exr_file)
-    print(image.dtype)
 
     # remove alpha channel for jpg conversion
     image = image[:,:,:3]
 
-    data = 65535 * image + 20000
+    data = 65535 * image + 15000
     data[data > 65535] = 65535
     rgb_image = data.astype('uint16')
     print(rgb_image.dtype)
@@ -63,9 +62,9 @@ def standardize_bbox(pcl, points_per_object):
     mins = np.amin(pcl, axis=0)
     maxs = np.amax(pcl, axis=0)
     center = ( mins + maxs ) / 2.
-    scale = np.amax(maxs-mins)
+    scale = np.amax(maxs - mins)
     print("Center: {}, Scale: {}".format(center, scale))
-    result = ((pcl - center)/scale).astype(np.float32) # [-0.5, 0.5]
+    result = ((pcl - center) / scale).astype(np.float32) * 2.0 # [-1.0, 1.0]
     return result
 
 
@@ -86,7 +85,7 @@ xml_head = \
             <integer name="sampleCount" value="256"/>
         </sampler>
         <film type="hdrfilm">
-            <integer name="width" value="1600"/>
+            <integer name="width" value="1200"/>
             <integer name="height" value="1200"/>
             <rfilter type="gaussian"/>
             <boolean name="banner" value="false"/>
@@ -115,6 +114,7 @@ xml_ball_segment = \
     </shape>
 """
 
+
 xml_tail = \
 """
     <shape type="rectangle">
@@ -137,14 +137,13 @@ xml_tail = \
 </scene>
 """
 
+
 def colormap(x, y, z):
     vec = np.array([x, y, z])
     vec = np.clip(vec, 0.001, 1.0)
     norm = np.sqrt(np.sum(vec ** 2))
     vec /= norm
     return [vec[0], vec[1], vec[2]]
-
-xml_segments = [xml_head]
 
 
 if __name__ == '__main__':
@@ -163,8 +162,11 @@ if __name__ == '__main__':
             files.append(
                 os.path.join(data_path, _f)
             )
+
+    files = [_f for _f in files if _f.endswith('.npy')]
     
     for _f in files:
+        xml_segments = [xml_head]
         basename = os.path.basename(_f).split('.')[0]
 
         pcl = np.load(_f)
@@ -175,9 +177,9 @@ if __name__ == '__main__':
 
         for i in range(pcl.shape[0]):
             delta = 0.5
-            color = colormap(pcl[i,0] + delta, pcl[i,1] + delta,pcl[i,2] + delta -0.0125)
+            color = colormap(pcl[i, 0] + delta, pcl[i, 1] + delta,pcl[i, 2] + delta - 0.0125)
             xml_segments.append(
-                xml_ball_segment.format(pcl[i, 0],pcl[i, 1],pcl[i, 2], *color))
+                xml_ball_segment.format(pcl[i, 0], pcl[i, 1], pcl[i, 2], *color))
         xml_segments.append(xml_tail)
 
         xml_content = str.join('', xml_segments)
