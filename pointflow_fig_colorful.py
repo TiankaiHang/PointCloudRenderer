@@ -2,8 +2,14 @@ import os
 import sys
 import imageio
 import numpy as np
+import platform
+from multiprocessing import Pool
 
 imageio.plugins.freeimage.download()
+
+
+def get_platform():
+    return platform.system().lower()
 
 
 ## ref: https://stackoverflow.com/questions/50748084/convert-exr-to-jpeg-using-imageio-and-python
@@ -146,6 +152,31 @@ def colormap(x, y, z):
     return [vec[0], vec[1], vec[2]]
 
 
+def main_worker(fn):
+    xml_segments = [xml_head]
+    basename = os.path.basename(fn).split('.')[0]
+    pcl = np.load(fn)
+    pcl = standardize_bbox(pcl, 2048)
+    pcl = pcl[:, [2, 0, 1]]
+    pcl[:, 0] *= -1
+    pcl[:, 2] += 0.0125
+    for i in range(pcl.shape[0]):
+        delta = 0.5
+        color = colormap(pcl[i, 0] + delta, pcl[i, 1] + delta,pcl[i, 2] + delta - 0.0125)
+        xml_segments.append(
+            xml_ball_segment.format(pcl[i, 0], pcl[i, 1], pcl[i, 2], *color))
+    xml_segments.append(xml_tail)
+    xml_content = str.join('', xml_segments)
+    with open(f'{basename}.xml', 'w') as f:
+        f.write(xml_content)
+    # render xml to exr
+    os.system(f"mitsuba {basename}.xml")
+    # change exr to jpeg
+    convert_exr_to_jpg(
+        f'{basename}.exr', 
+        os.path.join(out_path, f'{basename}.png'))
+
+
 if __name__ == '__main__':
 
     data_path = sys.argv[1]
@@ -164,35 +195,23 @@ if __name__ == '__main__':
             )
 
     files = [_f for _f in files if _f.endswith('.npy')]
+
+    # multi-processing
+    # p = Pool(processes=1)
     
     for _f in files:
-        xml_segments = [xml_head]
-        basename = os.path.basename(_f).split('.')[0]
-
-        pcl = np.load(_f)
-        pcl = standardize_bbox(pcl, 2048)
-        pcl = pcl[:, [2, 0, 1]]
-        pcl[:, 0] *= -1
-        pcl[:, 2] += 0.0125
-
-        for i in range(pcl.shape[0]):
-            delta = 0.5
-            color = colormap(pcl[i, 0] + delta, pcl[i, 1] + delta,pcl[i, 2] + delta - 0.0125)
-            xml_segments.append(
-                xml_ball_segment.format(pcl[i, 0], pcl[i, 1], pcl[i, 2], *color))
-        xml_segments.append(xml_tail)
-
-        xml_content = str.join('', xml_segments)
-
-        with open(f'{basename}.xml', 'w') as f:
-            f.write(xml_content)
-
-        # render xml to exr
-        os.system(f"mitsuba {basename}.xml")
-
-        # change exr to jpeg
-        convert_exr_to_jpg(
-            f'{basename}.exr', 
-            os.path.join(out_path, f'{basename}.png'))
-
-    os.system(f'rm -rf *.xml')
+        # p.apply_async(main_worker, args=(_f, ))
+        main_worker(_f)
+        
+    # p.close()
+    # p.join()
+    
+    _platform = get_platform()
+    if _platform == 'linux':
+        os.system(f'rm *.xml')
+        os.system(f'rm *.exr')
+    elif _platform == 'windows':
+        os.system(f'del *.xml')
+        os.system(f'del *.exr')
+    else:
+        raise ValueError(f'Such platform {_platform} is not supported')
