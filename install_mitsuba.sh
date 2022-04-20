@@ -1,3 +1,5 @@
+sudo apt-get update
+
 # ref: https://mitsuba2.readthedocs.io/en/latest/src/getting_started/compiling.html
 sudo apt-get install -y clang-9 libc++-9-dev libc++abi-9-dev cmake ninja-build
 sudo apt-get install -y libz-dev libpng-dev libjpeg-dev libxrandr-dev libxinerama-dev libxcursor-dev

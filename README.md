@@ -13,6 +13,8 @@ The script generates a XML file, which describes a 3D scene in the format used b
 ### Install Mitsuba2
 ```bash
 bash install_mitsuba.sh
+# add mitsuba to path
+export PATH=$PWD/mitsuba2/build/dist/:$PATH
 ```
 
 ## Instructions
