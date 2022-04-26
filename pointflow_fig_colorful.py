@@ -61,7 +61,9 @@ def convert_exr_to_jpg(exr_file, jpg_file):
     return True
 
 
-def standardize_bbox(pcl, points_per_object):
+def standardize_bbox(pcl, points_per_object=-1):
+    points_per_object = points_per_object \
+        if points_per_object > 0 else pcl.shape[0]
     pt_indices = np.random.choice(pcl.shape[0], points_per_object, replace=False)
     np.random.shuffle(pt_indices)
     pcl = pcl[pt_indices] # n by 3
@@ -152,17 +154,21 @@ def colormap(x, y, z):
     return [vec[0], vec[1], vec[2]]
 
 
-def main_worker(fn):
+def main_worker(fn, manual_color=None, num_points=-1):
     xml_segments = [xml_head]
     basename = os.path.basename(fn).split('.')[0]
     pcl = np.load(fn)
-    pcl = standardize_bbox(pcl, 2048)
+    pcl = standardize_bbox(pcl, num_points)
+    print(f"Render point cloud with shape {pcl.shape}")
     pcl = pcl[:, [2, 0, 1]]
     pcl[:, 0] *= -1
     pcl[:, 2] += 0.0125
     for i in range(pcl.shape[0]):
         delta = 0.5
-        color = colormap(pcl[i, 0] + delta, pcl[i, 1] + delta,pcl[i, 2] + delta - 0.0125)
+        if manual_color is None:
+            color = colormap(pcl[i, 0]+delta, pcl[i, 1]+delta, pcl[i, 2]+delta-0.0125)
+        else:
+            color = manual_color
         xml_segments.append(
             xml_ball_segment.format(pcl[i, 0], pcl[i, 1], pcl[i, 2], *color))
     xml_segments.append(xml_tail)
@@ -191,8 +197,7 @@ if __name__ == '__main__':
     elif os.path.isdir(data_path):
         for _f in os.listdir(data_path):
             files.append(
-                os.path.join(data_path, _f)
-            )
+                os.path.join(data_path, _f))
 
     files = [_f for _f in files if _f.endswith('.npy')]
 
@@ -201,7 +206,7 @@ if __name__ == '__main__':
     
     for _f in files:
         # p.apply_async(main_worker, args=(_f, ))
-        main_worker(_f)
+        main_worker(_f, manual_color=[0.4, 0.6, 0.8], num_points=4096)
         
     # p.close()
     # p.join()
