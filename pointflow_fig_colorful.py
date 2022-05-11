@@ -212,7 +212,7 @@ if __name__ == '__main__':
     
     for _f in files:
         # p.apply_async(main_worker, args=(_f, ))
-        main_worker(_f, manual_color=[0.4, 0.6, 0.8], num_points=4096)
+        main_worker(_f, manual_color=[0.4, 0.6, 0.8], num_points=-1)
         
     # p.close()
     # p.join()
