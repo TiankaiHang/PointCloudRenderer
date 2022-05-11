@@ -160,7 +160,7 @@ def main_worker(fn, manual_color=None, num_points=-1):
     basename = os.path.basename(fn).split('.')[0]
     pcl = np.load(fn)
     if pcl.shape[1] == 6:
-        pc1, colors = pcl[:, :3], pc1[:, 3:]
+        pcl, colors = pcl[:, :3], pcl[:, 3:]
     pcl = standardize_bbox(pcl, num_points)
     print(f"Render point cloud with shape {pcl.shape}")
     pcl = pcl[:, [2, 0, 1]]
