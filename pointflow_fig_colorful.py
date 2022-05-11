@@ -159,6 +159,7 @@ def main_worker(fn, manual_color=None, num_points=-1):
     xml_segments = [xml_head]
     basename = os.path.basename(fn).split('.')[0]
     pcl = np.load(fn)
+    colors = None
     if pcl.shape[1] == 6:
         pcl, colors = pcl[:, :3], pcl[:, 3:]
     pcl = standardize_bbox(pcl, num_points)
@@ -168,7 +169,7 @@ def main_worker(fn, manual_color=None, num_points=-1):
     pcl[:, 2] += 0.0125
     for i in range(pcl.shape[0]):
         delta = 0.5
-        if pcl.shape[1] == 6:
+        if colors is not None:
             color = [colors[i][0], colors[i][1], colors[i][2]]
         elif manual_color is None:
             color = colormap(pcl[i, 0]+delta, pcl[i, 1]+delta, pcl[i, 2]+delta-0.0125)
