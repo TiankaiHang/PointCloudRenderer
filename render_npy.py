@@ -199,6 +199,7 @@ if __name__ == '__main__':
     assert len(pcds.shape) == 3
 
     for i in range(len(pcds)):
+        print(f'*********** Rendering PointCloud {i:4d} ***********')
         # p.apply_async(main_worker, args=(_f, ))
         main_worker(pcl=pcds[i], basename=f'{i:04d}', manual_color=None, num_points=-1)
         
